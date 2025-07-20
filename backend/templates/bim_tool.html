@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BIM Tool</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<header>
+  <h1>BIM PDF Processing</h1>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/acc-tool">ACC Tool</a>
+    <a href="/bim-tool">BIM Tool</a>
+  </nav>
+</header>
+<main>
+  <h2>Upload your BIM PDF</h2>
+  <form action="/bim-tool" method="post" enctype="multipart/form-data">
+    <label for="pdf_file">PDF File:</label>
+    <input type="file" name="pdf_file" id="pdf_file" accept="application/pdf" required>
+    <label for="output_name">Output filename (no “.pdf”):</label>
+    <input type="text" name="output_name" id="output_name" required>
+    <button type="submit">Process</button>
+  </form>
+</main>
+<footer>
+  &copy; 2025 Rosendin Electric Inc.
+</footer>
+<script src="/static/js/script.js"></script>
+</body>
+</html>
