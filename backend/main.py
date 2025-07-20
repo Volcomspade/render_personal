@@ -1,90 +1,67 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request
-from fastapi.responses import StreamingResponse, HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+import os
+from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PyPDF2 import PdfReader, PdfWriter
-import io, zipfile, csv, os
-from datetime import datetime
-from typing import List
 
 app = FastAPI()
 
-# enable CORS so AJAX form posts work
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+BASE_DIR = os.path.dirname(__file__)
+
+# 1) serve your CSS/JS/images
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(BASE_DIR, "static")),
+    name="static",
 )
 
-# mount static files and templates
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
-templates = Jinja2Templates(directory="backend/templates")
+# 2) tell Jinja where your .html lives
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-LOG_FILE = "usage_log.csv"
-if not os.path.exists(LOG_FILE):
-    with open(LOG_FILE, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Timestamp", "Email", "Endpoint", "IP", "Count"])
-
-def log_usage(email: str, endpoint: str, ip: str, count: int):
-    with open(LOG_FILE, "a", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([datetime.now().isoformat(), email, endpoint, ip, count])
-
-@app.get("/", response_class=HTMLResponse)
-def landing(request: Request):
+@app.get("/")
+async def landing_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/acc", response_class=HTMLResponse)
-def acc_page(request: Request):
+# ACC tool routes
+@app.get("/acc-tool")
+async def acc_form(request: Request):
     return templates.TemplateResponse("acc_tool.html", {"request": request})
 
-@app.get("/bim", response_class=HTMLResponse)
-def bim_page(request: Request):
+@app.post("/acc-tool")
+async def acc_process(
+    pdf_file: UploadFile = File(...),
+    output_name: str = Form(...),
+):
+    reader = PdfReader(pdf_file.file)
+    writer = PdfWriter()
+    for p in reader.pages:
+        writer.add_page(p)
+    # Make sure outputs/ exists
+    out_dir = os.path.join(BASE_DIR, "static", "outputs")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{output_name}.pdf")
+    with open(out_path, "wb") as f:
+        writer.write(f)
+    return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
+
+# BIM tool routes (same pattern—swap in your real BIM logic)
+@app.get("/bim-tool")
+async def bim_form(request: Request):
     return templates.TemplateResponse("bim_tool.html", {"request": request})
 
-def split_pdf(file_bytes: bytes, split_points: List[int]) -> io.BytesIO:
-    reader = PdfReader(io.BytesIO(file_bytes))
+@app.post("/bim-tool")
+async def bim_process(
+    pdf_file: UploadFile = File(...),
+    output_name: str = Form(...),
+):
+    reader = PdfReader(pdf_file.file)
     writer = PdfWriter()
-    for p in split_points:
-        if 0 <= p < len(reader.pages):
-            writer.add_page(reader.pages[p])
-    out = io.BytesIO()
-    writer.write(out)
-    out.seek(0)
-    return out
-
-def make_zip(parts: dict) -> io.BytesIO:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        for name, pdf_bytes in parts.items():
-            z.writestr(name, pdf_bytes.getvalue())
-    buf.seek(0)
-    return buf
-
-@app.post("/upload")
-async def acc_upload(
-    file: UploadFile = File(...),
-    email: str = Form(...),
-    pages: str = Form(...)
-):
-    pts = [int(p) for p in pages.split(",") if p.strip().isdigit()]
-    data = await file.read()
-    part = split_pdf(data, pts)
-    bundle = make_zip({f"chunk_{p}.pdf": part for p in pts})
-    log_usage(email, "/upload", file.client.host, len(pts))
-    return StreamingResponse(bundle, media_type="application/zip", headers={
-        "Content-Disposition": 'attachment; filename="acc_splits.zip"'
-    })
-
-@app.post("/bim-upload")
-async def bim_upload(
-    file: UploadFile = File(...),
-    email: str = Form(...),
-    pages: str = Form(...)
-):
-    # identical logic for BIM
-    return await acc_upload(file, email, pages)
+    for p in reader.pages:
+        writer.add_page(p)
+    out_dir = os.path.join(BASE_DIR, "static", "outputs")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{output_name}.pdf")
+    with open(out_path, "wb") as f:
+        writer.write(f)
+    return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
