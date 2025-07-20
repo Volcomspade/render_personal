@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles  # ✅ ADD THIS
 from PyPDF2 import PdfReader, PdfWriter
 import io, re, zipfile, csv, os
 from datetime import datetime
@@ -8,6 +9,8 @@ import pandas as pd
 from typing import List
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")  # ✅ ADD THIS
+
 
 # Allow frontend development access
 app.add_middleware(
