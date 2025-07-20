@@ -1,16 +1,16 @@
 from fastapi import FastAPI, UploadFile, File, Form, Request
-from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from PyPDF2 import PdfReader, PdfWriter
-import io, re, zipfile, csv, os
+import io, zipfile, csv, os
 from datetime import datetime
 from typing import List
-import smtplib
 
 app = FastAPI()
 
-# CORS
+# enable CORS so AJAX form posts work
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,83 +19,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# serve your frontend assets
+# mount static files and templates
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+templates = Jinja2Templates(directory="backend/templates")
 
 LOG_FILE = "usage_log.csv"
 if not os.path.exists(LOG_FILE):
     with open(LOG_FILE, "w", newline="") as f:
-        csv.writer(f).writerow(["Timestamp","Email","Endpoint","IP","Count"])
+        writer = csv.writer(f)
+        writer.writerow(["Timestamp", "Email", "Endpoint", "IP", "Count"])
 
-def log_usage(email, endpoint, ip, count):
+def log_usage(email: str, endpoint: str, ip: str, count: int):
     with open(LOG_FILE, "a", newline="") as f:
-        csv.writer(f).writerow([datetime.utcnow().isoformat(), email, endpoint, ip, count])
+        writer = csv.writer(f)
+        writer.writerow([datetime.now().isoformat(), email, endpoint, ip, count])
 
-def extract_toc_entries(pages):
-    text = "".join(p.extract_text() or "" for p in pages)
-    pattern = re.compile(r"#\d+:\s+(.*?):\s+(.*?Checklist).*?(\d+)", re.DOTALL)
-    return [(int(pg)-1, f"{t1.strip()} - {t2.strip()}", pg) for t1,t2,pg in pattern.findall(text)]
+@app.get("/", response_class=HTMLResponse)
+def landing(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-def split_pdf(files: List[UploadFile]):
-    readers = [PdfReader(f.file) for f in files]
-    pages = [p for r in readers for p in r.pages]
-    toc = []
-    for r in readers:
-        subset = r.pages[1:6] if len(r.pages)>5 else r.pages[1:]
-        toc += extract_toc_entries(subset)
-    if not toc:
-        return None
-    ranges = []
-    for i,(start,name,pg) in enumerate(toc):
-        end = toc[i+1][0] if i+1<len(toc) else len(pages)
-        ranges.append((start,end,name,pg))
+@app.get("/acc", response_class=HTMLResponse)
+def acc_page(request: Request):
+    return templates.TemplateResponse("acc_tool.html", {"request": request})
+
+@app.get("/bim", response_class=HTMLResponse)
+def bim_page(request: Request):
+    return templates.TemplateResponse("bim_tool.html", {"request": request})
+
+def split_pdf(file_bytes: bytes, split_points: List[int]) -> io.BytesIO:
+    reader = PdfReader(io.BytesIO(file_bytes))
+    writer = PdfWriter()
+    for p in split_points:
+        if 0 <= p < len(reader.pages):
+            writer.add_page(reader.pages[p])
+    out = io.BytesIO()
+    writer.write(out)
+    out.seek(0)
+    return out
+
+def make_zip(parts: dict) -> io.BytesIO:
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf,"w") as z:
-        manifest=[]
-        for s,e,name,pg in ranges:
-            w = PdfWriter()
-            for p in pages[s:e]:
-                w.add_page(p)
-            tmp = io.BytesIO()
-            w.write(tmp); tmp.seek(0)
-            fn = re.sub(r'[\\/*?:"<>|]','_',name)+".pdf"
-            z.writestr(fn, tmp.read())
-            manifest.append({"Checklist":name,"Page":pg,"File":fn})
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, pdf_bytes in parts.items():
+            z.writestr(name, pdf_bytes.getvalue())
     buf.seek(0)
-    return buf, manifest, len(ranges), toc[0][1]
+    return buf
 
 @app.post("/upload")
-async def upload(request: Request,
-                 files: List[UploadFile] = File(...),
-                 email: str = Form(...)):
-    result = split_pdf(files)
-    if not result:
-        return JSONResponse(422, {"error":"No checklists found"})
-    buf, manifest, count, prefix = result
-    log_usage(email,"/upload", request.client.host, count)
-    fn = f"{prefix.split()[0]}_chk_{datetime.utcnow():%Y%m%d}.zip"
-    return StreamingResponse(buf, media_type="application/zip",
-                             headers={"Content-Disposition":f"attachment; filename={fn}"})
+async def acc_upload(
+    file: UploadFile = File(...),
+    email: str = Form(...),
+    pages: str = Form(...)
+):
+    pts = [int(p) for p in pages.split(",") if p.strip().isdigit()]
+    data = await file.read()
+    part = split_pdf(data, pts)
+    bundle = make_zip({f"chunk_{p}.pdf": part for p in pts})
+    log_usage(email, "/upload", file.client.host, len(pts))
+    return StreamingResponse(bundle, media_type="application/zip", headers={
+        "Content-Disposition": 'attachment; filename="acc_splits.zip"'
+    })
 
-@app.get("/")
-async def landing():
-    html = open("backend/static/index.html").read()
-    return HTMLResponse(html)
-
-@app.get("/acc-tool")
-async def acc_tool():
-    html = open("backend/static/acc_tool.html").read()
-    return HTMLResponse(html)
-
-@app.get("/bim-tool")
-async def bim_tool():
-    html = open("backend/static/bim_tool.html").read()
-    return HTMLResponse(html)
-
-@app.post("/contact")
-async def contact(name: str = Form(...),
-                  email: str = Form(...),
-                  message: str = Form(...)):
-    # Simple console log (or hook up SMTP here)
-    print(f"[Contact] {name} <{email}>: {message}")
-    return JSONResponse({"success": True})
+@app.post("/bim-upload")
+async def bim_upload(
+    file: UploadFile = File(...),
+    email: str = Form(...),
+    pages: str = Form(...)
+):
+    # identical logic for BIM
+    return await acc_upload(file, email, pages)
