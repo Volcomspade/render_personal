@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Home | Rosendin Checklist Tools{% endblock %}
+{% block content %}
+  <section class="hero">
+    <p class="blurb">
+      Hi, I’m <strong>[Your Name]</strong>, I build simple PDF‑based tools to streamline ACC & BIM checklist workflows.
+    </p>
+    <div class="buttons">
+      <a class="btn" href="/acc-tool">Try ACC Tool</a>
+      <a class="btn" href="/bim-tool">Try BIM Tool</a>
+    </div>
+    <p class="linkedin">
+      <a href="https://www.linkedin.com/in/your‑profile" target="_blank">Connect on LinkedIn</a>
+    </p>
+  </section>
+
+  <section class="contact">
+    <h2>Contact Me</h2>
+    <form action="/contact" method="post">
+      <input type="text" name="name"    placeholder="Your Name"    required>
+      <input type="email" name="email"  placeholder="Your Email"   required>
+      <textarea name="message" rows="4" placeholder="Your Message" required></textarea>
+      <button type="submit">Send Message</button>
+    </form>
+  </section>
+
+  <p class="disclaimer">
+    Disclaimer: These tools are provided “as‑is” for internal use. Rosendin Electric makes no warranties…
+  </p>
+{% endblock %}
