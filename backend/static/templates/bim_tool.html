@@ -1,1 +1,20 @@
-<h1>BIM Checklist Splitter</h1><p>Tool interface here...</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BIM Splitter</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/script.js" defer></script>
+</head>
+<body>
+  <header><h1>BIM Checklist Splitter</h1><a href="/">← Home</a></header>
+  <div class="container">
+    <form id="bim-form" method="post" enctype="multipart/form-data" action="/bim-upload">
+      <input type="email" name="email" placeholder="Your Email" required />
+      <input type="file" name="file" accept=".pdf" required />
+      <input type="text" name="pages" placeholder="Page numbers (e.g. 2,4,6)" required />
+      <button type="submit">Split BIM PDF</button>
+    </form>
+  </div>
+</body>
+</html>
