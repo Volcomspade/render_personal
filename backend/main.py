@@ -121,35 +121,15 @@ async def get_usage_log():
 
 @app.get("/")
 async def landing_page():
-    html = """
-    <!DOCTYPE html>
-    <html lang='en'>
-    <head>
-        <meta charset='UTF-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Checklist Tools by Ryan Younker</title>
-        <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 2em; background: #f5f5f5; }
-            h1 { color: #333; }
-            p, a { color: #555; }
-            .projects { margin-top: 2em; }
-            .projects a { display: block; margin: 1em auto; text-decoration: none; color: #0066cc; font-weight: bold; }
-            .footer { margin-top: 4em; font-size: 0.9em; color: #888; }
-        </style>
-    </head>
-    <body>
-        <h1>Checklist Splitter Tools</h1>
-        <p>Hi, I'm Ryan Younker — a Quality Site Manager focused on Renewable Energy.<br>
-        These tools are side projects I’ve been developing in my spare time to help simplify ACC Build and BIM checklist workflows.</p>
-        <div class='projects'>
-            <a href='/acc-tool'>ACC Checklist Splitter</a>
-            <a href='/bim-tool'>BIM Checklist Splitter</a>
-        </div>
-        <p style='margin-top:2em;'>Connect with me on <a href='https://www.linkedin.com/in/ryan-younker-253365339/' target='_blank'>LinkedIn</a></p>
-        <div class='footer'>
-            <p><strong>Disclaimer:</strong> This site is under active development. Some errors may occur during use. Use at your own discretion.</p>
-        </div>
-    </body>
-    </html>
-    """
+    html = open("static/index.html").read()
+    return HTMLResponse(content=html, status_code=200)
+
+@app.get("/acc-tool")
+async def acc_tool_page():
+    html = open("static/acc_tool.html").read()
+    return HTMLResponse(content=html, status_code=200)
+
+@app.get("/bim-tool")
+async def bim_tool_page():
+    html = open("static/bim_tool.html").read()
     return HTMLResponse(content=html, status_code=200)
