@@ -6,7 +6,7 @@ import os
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="backend/static")
 
 @app.get("/", response_class=HTMLResponse)
