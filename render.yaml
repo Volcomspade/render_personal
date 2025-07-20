@@ -11,10 +11,10 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SMTP_SERVER
-        sync: false
+        value: smtp.mail.yahoo.com
       - key: SMTP_PORT
-        sync: false
+        value: 587
       - key: CONTACT_EMAIL
-        sync: false
+        value: ryanyounker@ymail.com
       - key: ADMIN_KEY
         sync: false
