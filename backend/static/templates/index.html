@@ -1,36 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Checklist Tools by Ryan Younker</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <title>Checklist Splitter</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/script.js" defer></script>
 </head>
 <body>
-    <header>
-        <img src="/static/logo.svg" alt="Logo" class="logo">
-        <h1>Checklist Tools Portal</h1>
-        <p>Built by Ryan Younker, Renewable Energy Quality Site Manager.</p>
-    </header>
-    <main>
-        <nav>
-            <a href="/acc-tool">ACC Checklist Splitter</a>
-            <a href="/bim-tool">BIM Checklist Splitter</a>
-        </nav>
-        <section>
-            <h2>Contact Me</h2>
-            <form method="post" action="/contact">
-                <input type="text" name="name" placeholder="Your Name" required />
-                <input type="email" name="email" placeholder="Your Email" required />
-                <textarea name="message" placeholder="Message..." required></textarea>
-                <button type="submit">Send</button>
-            </form>
-        </section>
-        <section class="links">
-            <p><a href="https://www.linkedin.com/in/ryan-younker-253365339/" target="_blank">LinkedIn Profile</a></p>
-        </section>
-        <footer>
-            <p>Disclaimer: This site provides tools as-is. Use at your own discretion.</p>
-        </footer>
-    </main>
+  <header>
+    <h1>Checklist Splitter</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/acc">ACC Tool</a>
+      <a href="/bim">BIM Tool</a>
+    </nav>
+    <div id="theme-toggle" class="theme-toggle">🌓</div>
+  </header>
+  <div class="container">
+    <h2>Welcome!</h2>
+    <p>Split your ACC and BIM checklists into manageable PDF chunks.</p>
+    <h3>Contact</h3>
+    <form action="mailto:you@yourdomain.com" method="post" enctype="text/plain">
+      <input name="name" placeholder="Your Name" required />
+      <input name="email" placeholder="Your Email" required />
+      <textarea name="message" placeholder="Message" rows="4"></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  <footer>
+    &copy; 2025 Your Name &bull; <a href="https://linkedin.com/in/yourprofile">LinkedIn</a>
+  </footer>
 </body>
 </html>
