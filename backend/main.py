@@ -1,135 +1,27 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request
-from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from PyPDF2 import PdfReader, PdfWriter
-import io, re, zipfile, csv, os
-from datetime import datetime
-import pandas as pd
-from typing import List
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import os
 
 app = FastAPI()
 
-# Allow frontend development access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+templates = Jinja2Templates(directory="backend/static")
 
-LOG_FILE = "usage_log.csv"
-if not os.path.exists(LOG_FILE):
-    with open(LOG_FILE, mode='w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Timestamp", "Email", "Endpoint", "IP Address", "Checklist Count"])
+@app.get("/", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-def log_usage(email: str, endpoint: str, ip: str, count: int):
-    with open(LOG_FILE, mode='a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([datetime.now().isoformat(), email, endpoint, ip, count])
+@app.post("/contact")
+async def contact_form(name: str = Form(...), email: str = Form(...), message: str = Form(...)):
+    print(f"Contact Form Submitted: {name}, {email}, {message}")
+    return {"success": True}
 
-def extract_toc_entries(pages):
-    toc_text = "".join(page.extract_text() or "" for page in pages)
-    pattern = re.compile(r"#\d+:\s+(.*?):\s+(.*?Checklist.*?)\.+\s+(\d+)", re.DOTALL)
-    matches = pattern.findall(toc_text)
-    entries = [(int(page_num) - 1, f"{title1.strip()} - {title2.strip()}", page_num) for title1, title2, page_num in matches]
-    return entries
+@app.get("/acc-tool", response_class=HTMLResponse)
+async def acc_tool(request: Request):
+    return templates.TemplateResponse("acc_tool.html", {"request": request})
 
-def split_pdf_by_toc(files: List[UploadFile]):
-    readers = [PdfReader(f.file) for f in files]
-    all_pages = [page for reader in readers for page in reader.pages]
-
-    toc_entries = []
-    for reader in readers:
-        pages_to_check = reader.pages[1:6] if len(reader.pages) > 5 else reader.pages[1:]
-        entries = extract_toc_entries(pages_to_check)
-        if entries:
-            toc_entries.extend(entries)
-
-    if not toc_entries:
-        return None, None, None, None
-
-    split_ranges = []
-    for i, (start, name, page_str) in enumerate(toc_entries):
-        end = toc_entries[i + 1][0] if i + 1 < len(toc_entries) else len(all_pages)
-        split_ranges.append((start, end, name, page_str))
-
-    zip_buffer = io.BytesIO()
-    manifest_data = []
-    with zipfile.ZipFile(zip_buffer, "w") as zipf:
-        for start, end, name, page_str in split_ranges:
-            writer = PdfWriter()
-            for page in all_pages[start:end]:
-                writer.add_page(page)
-
-            buffer = io.BytesIO()
-            writer.write(buffer)
-            buffer.seek(0)
-
-            safe_name = re.sub(r'[\\/*?:"<>|]', "_", name.strip()) + ".pdf"
-            zipf.writestr(safe_name, buffer.read())
-            manifest_data.append({"Checklist Name": name, "Start Page": page_str, "File Name": safe_name})
-    zip_buffer.seek(0)
-    return zip_buffer, manifest_data, len(split_ranges), toc_entries[0][1] if toc_entries else "checklists"
-
-def split_bim_checklist(files: List[UploadFile]):
-    return split_pdf_by_toc(files)
-
-@app.post("/upload")
-async def upload_checklist(request: Request, files: List[UploadFile] = File(...), email: str = Form(...)):
-    zip_data, manifest_data, count, project_prefix = split_pdf_by_toc(files)
-    if not zip_data:
-        return JSONResponse(status_code=422, content={"error": "No checklists found"})
-
-    client_ip = request.client.host
-    log_usage(email, "/upload", client_ip, count)
-
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    zip_filename = f"{project_prefix.split()[0]}_checklists_{today_str}.zip"
-
-    return StreamingResponse(zip_data, media_type="application/zip", headers={
-        "Content-Disposition": f"attachment; filename={zip_filename}"
-    })
-
-@app.post("/bim-upload")
-async def upload_bim_checklist(request: Request, files: List[UploadFile] = File(...), email: str = Form(...)):
-    zip_data, manifest_data, count, project_prefix = split_bim_checklist(files)
-    if not zip_data:
-        return JSONResponse(status_code=422, content={"error": "No checklists found"})
-
-    client_ip = request.client.host
-    log_usage(email, "/bim-upload", client_ip, count)
-
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    zip_filename = f"{project_prefix.split()[0]}_bim_checklists_{today_str}.zip"
-
-    return StreamingResponse(zip_data, media_type="application/zip", headers={
-        "Content-Disposition": f"attachment; filename={zip_filename}"
-    })
-
-@app.get("/usage")
-async def get_usage_log():
-    if not os.path.exists(LOG_FILE):
-        return JSONResponse(content={"data": []})
-
-    with open(LOG_FILE, mode='r') as f:
-        reader = csv.DictReader(f)
-        data = list(reader)
-
-    return JSONResponse(content={"data": data})
-
-@app.get("/")
-async def landing_page():
-    html = open("static/index.html").read()
-    return HTMLResponse(content=html, status_code=200)
-
-@app.get("/acc-tool")
-async def acc_tool_page():
-    html = open("static/acc_tool.html").read()
-    return HTMLResponse(content=html, status_code=200)
-
-@app.get("/bim-tool")
-async def bim_tool_page():
-    html = open("static/bim_tool.html").read()
-    return HTMLResponse(content=html, status_code=200)
+@app.get("/bim-tool", response_class=HTMLResponse)
+async def bim_tool(request: Request):
+    return templates.TemplateResponse("bim_tool.html", {"request": request})

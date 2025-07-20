@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-jinja2
 python-multipart
-pandas
-PyPDF2>=3.0.0
+jinja2
+PyPDF2
