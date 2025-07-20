@@ -1,1 +1,1 @@
-// Placeholder for JS logic
+console.log('JS loaded');
