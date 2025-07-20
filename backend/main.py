@@ -1,77 +1,60 @@
-import os
 from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from PyPDF2 import PdfReader, PdfWriter
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+import shutil, os, zipfile
+from typing import List
+import uuid
 
 app = FastAPI()
-BASE_DIR = os.path.dirname(__file__)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+templates = Jinja2Templates(directory="backend/templates")
 
-# serve CSS/JS/logo under /static
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(BASE_DIR, "static")),
-    name="static",
-)
-
-# point Jinja at our templates folder
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
-
-@app.get("/")
-async def landing(request: Request):
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# ACC tool
-@app.get("/acc-tool")
-async def acc_get(request: Request):
-    return templates.TemplateResponse("acc_tool.html", {"request": request})
+@app.get("/acc", response_class=HTMLResponse)
+async def acc_page(request: Request):
+    return templates.TemplateResponse("acc.html", {"request": request})
 
-@app.post("/acc-tool")
-async def acc_post(
-    pdf_file: UploadFile = File(...),
-    output_name: str   = Form(...)
-):
-    reader = PdfReader(pdf_file.file)
-    writer = PdfWriter()
-    for p in reader.pages:
-        writer.add_page(p)
-    out_dir = os.path.join(BASE_DIR, "static", "outputs")
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{output_name}.pdf")
-    with open(out_path, "wb") as f:
-        writer.write(f)
-    return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
+@app.get("/bim", response_class=HTMLResponse)
+async def bim_page(request: Request):
+    return templates.TemplateResponse("bim.html", {"request": request})
 
-# BIM tool (same pattern)
-@app.get("/bim-tool")
-async def bim_get(request: Request):
-    return templates.TemplateResponse("bim_tool.html", {"request": request})
+@app.get("/contact", response_class=HTMLResponse)
+async def contact_page(request: Request):
+    return templates.TemplateResponse("contact.html", {"request": request})
 
-@app.post("/bim-tool")
-async def bim_post(
-    pdf_file: UploadFile = File(...),
-    output_name: str   = Form(...)
-):
-    reader = PdfReader(pdf_file.file)
-    writer = PdfWriter()
-    for p in reader.pages:
-        writer.add_page(p)
-    out_dir = os.path.join(BASE_DIR, "static", "outputs")
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{output_name}.pdf")
-    with open(out_path, "wb") as f:
-        writer.write(f)
-    return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
+@app.post("/upload/acc")
+async def upload_acc(files: List[UploadFile] = File(...)):
+    output_dir = Path("backend/static/acc_output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = output_dir / f"acc_result_{uuid.uuid4().hex}.zip"
 
-# CONTACT form
-@app.post("/contact")
-async def contact(
-    request: Request,
-    name:    str = Form(...),
-    email:   str = Form(...),
-    message: str = Form(...)
-):
-    # Here you could integrate an email sender or logging
-    print(f"[CONTACT] {name} <{email}> says: {message}")
-    return templates.TemplateResponse("contact_thanks.html", {"request": request, "name": name})
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for file in files:
+            file_path = output_dir / file.filename
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            zipf.write(file_path, arcname=file.filename)
+
+    return FileResponse(zip_path, media_type='application/zip', filename=zip_path.name)
+
+@app.post("/upload/bim")
+async def upload_bim(files: List[UploadFile] = File(...)):
+    output_dir = Path("backend/static/bim_output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = output_dir / f"bim_result_{uuid.uuid4().hex}.zip"
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for file in files:
+            file_path = output_dir / file.filename
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            zipf.write(file_path, arcname=file.filename)
+
+    return FileResponse(zip_path, media_type='application/zip', filename=zip_path.name)
