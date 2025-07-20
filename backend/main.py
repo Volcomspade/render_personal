@@ -6,38 +6,36 @@ from fastapi.templating import Jinja2Templates
 from PyPDF2 import PdfReader, PdfWriter
 
 app = FastAPI()
-
 BASE_DIR = os.path.dirname(__file__)
 
-# 1) serve your CSS/JS/images
+# serve CSS/JS/logo under /static
 app.mount(
     "/static",
     StaticFiles(directory=os.path.join(BASE_DIR, "static")),
     name="static",
 )
 
-# 2) tell Jinja where your .html lives
+# point Jinja at our templates folder
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.get("/")
-async def landing_page(request: Request):
+async def landing(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# ACC tool routes
+# ACC tool
 @app.get("/acc-tool")
-async def acc_form(request: Request):
+async def acc_get(request: Request):
     return templates.TemplateResponse("acc_tool.html", {"request": request})
 
 @app.post("/acc-tool")
-async def acc_process(
+async def acc_post(
     pdf_file: UploadFile = File(...),
-    output_name: str = Form(...),
+    output_name: str   = Form(...)
 ):
     reader = PdfReader(pdf_file.file)
     writer = PdfWriter()
     for p in reader.pages:
         writer.add_page(p)
-    # Make sure outputs/ exists
     out_dir = os.path.join(BASE_DIR, "static", "outputs")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{output_name}.pdf")
@@ -45,15 +43,15 @@ async def acc_process(
         writer.write(f)
     return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
 
-# BIM tool routes (same pattern—swap in your real BIM logic)
+# BIM tool (same pattern)
 @app.get("/bim-tool")
-async def bim_form(request: Request):
+async def bim_get(request: Request):
     return templates.TemplateResponse("bim_tool.html", {"request": request})
 
 @app.post("/bim-tool")
-async def bim_process(
+async def bim_post(
     pdf_file: UploadFile = File(...),
-    output_name: str = Form(...),
+    output_name: str   = Form(...)
 ):
     reader = PdfReader(pdf_file.file)
     writer = PdfWriter()
@@ -65,3 +63,15 @@ async def bim_process(
     with open(out_path, "wb") as f:
         writer.write(f)
     return FileResponse(out_path, media_type="application/pdf", filename=f"{output_name}.pdf")
+
+# CONTACT form
+@app.post("/contact")
+async def contact(
+    request: Request,
+    name:    str = Form(...),
+    email:   str = Form(...),
+    message: str = Form(...)
+):
+    # Here you could integrate an email sender or logging
+    print(f"[CONTACT] {name} <{email}> says: {message}")
+    return templates.TemplateResponse("contact_thanks.html", {"request": request, "name": name})
