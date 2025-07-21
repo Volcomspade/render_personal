@@ -1,15 +1,21 @@
+
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>ACC Tool</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <h1>ACC PDF Upload</h1>
-    <form action="/process-acc" method="post" enctype="multipart/form-data">
-        <input type="file" name="files" multiple><br>
-        <input type="text" name="output_name" placeholder="Optional: Output zip name"><br>
-        <button type="submit">Upload</button>
+    <h2>ACC PDF Upload</h2>
+    <form action="/acc/process" method="post" enctype="multipart/form-data">
+        <label>Select PDF(s):</label>
+        <input type="file" name="pdf_files" multiple>
+        <br><br>
+        <label>Output base filename (optional):</label>
+        <input type="text" name="output_name" placeholder="leave blank for default">
+        <br><br>
+        <input type="submit" value="Process">
     </form>
 </body>
 </html>
