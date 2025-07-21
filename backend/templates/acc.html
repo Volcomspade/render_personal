@@ -1,1 +1,8 @@
-{% extends 'base.html' %}{% block content %}<h1>ACC Tool</h1>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<h2>ACC Checklist Tool</h2>
+<form action="/process_acc" enctype="multipart/form-data" method="post">
+    <input name="files" type="file" multiple required><br>
+    <input type="submit" value="Upload & Zip">
+</form>
+{% endblock %}
