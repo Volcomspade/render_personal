@@ -1,1 +1,15 @@
-<html><body><h1>BIM Checklist Tool</h1><form action='/upload/bim' method='post' enctype='multipart/form-data'><input type='file' name='files' multiple><input type='submit'></form></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BIM Tool</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>BIM PDF Upload</h1>
+    <form action="/process-bim" method="post" enctype="multipart/form-data">
+        <input type="file" name="files" multiple><br>
+        <input type="text" name="output_name" placeholder="Optional: Output zip name"><br>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
