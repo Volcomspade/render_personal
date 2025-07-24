@@ -1,1 +1,1 @@
-console.log('Theme toggle script');
+// placeholder for JS

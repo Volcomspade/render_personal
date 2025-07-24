@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-python-multipart
 jinja2
-pymupdf
+python-multipart
+PyMuPDF
